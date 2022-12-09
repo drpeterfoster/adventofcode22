@@ -1,0 +1,3 @@
+pandas
+numpy
+advent-of-code
