@@ -64,17 +64,17 @@ INSTRUCTORS = dict(
 
 def main1(input_data, n):
     orders = format_data(input_data)
-    H, TS = (0,0), [(0,0)] * n
+    H, TS = (0,0), [(0,0)] * n  # head + tail chain
     tail_record = [(0,0)]
     for direction, value in orders:
-        for _ in range(value):
-            H = INSTRUCTORS[direction](H)
-            h = H
-            for i, t in enumerate(TS):
+        for _ in range(value):  # step through the moves for each order
+            H = INSTRUCTORS[direction](H)  # update head position
+            h = H  # initialize the pseudo-head
+            for i, t in enumerate(TS):  # step through each tail knot
                 tail_direction = tail_instructor(h, t)
                 TS[i] = INSTRUCTORS[tail_direction](t)
-                h = TS[i]
-            tail_record.append(TS[i])
+                h = TS[i]  # tail knot becomes the pseudo-head for the next
+            tail_record.append(TS[i])  # the _last_ tail positions are recorded
     return len(set(tail_record))
 
 
