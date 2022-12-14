@@ -37,7 +37,7 @@ def cartographer(survey, xlims, ylims):
     for path in survey:
         for id in range(len(path) - 1):
             ya, yb = list(sorted([path[id][0], path[id + 1][0]]))
-            xa, xb = list(sorted([path[id][1], path[id + 1][1])
+            xa, xb = list(sorted([path[id][1], path[id + 1][1]]))
             for y in range(ya, yb + 1):
                 mapp[y, path[id][1]] = True
             for x in range(xa, xb + 1):
