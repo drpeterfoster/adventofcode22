@@ -42,24 +42,17 @@ def format_data(data):
     return g, start
 
 
-def dfexplore(g, start, sibs, path, bestpath):
+def dfexplore(g, start, path, bestpath):
     if start not in path:
         path.append(start)
-    if start in sibs:
-        sibs.remove(start)
     neighbors = [n for n in g.neighbors(start) if n not in path]
-    for n in neighbors:
-        sibs, path, bestpath = dfexplore(g, n, neighbors, path, bestpath)
+    while len(neighbors) > 0:
+        n = neighbors.pop()
+        path, bestpath = dfexplore(g, n, path, bestpath)
     score = score_path(g, path)
     if score > bestpath[0]:
         bestpath = (score, path)
-    # step up, over, & continue search
-    if len(sibs) > 0:
-        newstart = sibs[0]
-        path.pop()
-        neighbors = [n for n in g.neighbors(newstart) if n not in path]
-        sibs, path, bestpath = dfexplore(g, sibs[0], neighbors, path, bestpath)
-    return sibs, path, bestpath
+    return path[:-1], bestpath
 
 
 def score_path(g, path):
@@ -76,7 +69,7 @@ def score_path(g, path):
     return tf
 
 
-def main1(data):
+def main1_permuteall(data):
     g, start = format_data(data)
     search_nodes = list(g.nodes)
     search_nodes.remove(start)
@@ -85,23 +78,17 @@ def main1(data):
         score = score_path(g, [start] + list(path))
         if score > answer:
             answer = score
-    print(answer)
     return answer
 
 
-def main1_deprecated2(data):
+def main1_dfs(data):
     g, start = format_data(TEST_DATA_A)
     bestpath = (0, [])
-    starting_neighbors = [n for n in g.neighbors(start)]
-    _, _, bestpath = dfexplore(g, start, starting_neighbors, [start], bestpath)
-    print(bestpath)
+    _, bestpath = dfexplore(g, start, [start], bestpath)
     return bestpath[0]
 
 
-def main1_deprecated1(data=None, n=3):
-    def adj_time(t, p):
-        return t - len(p)  # time to get there and turn the switch
-
+def main1_sortedstep(data=None, n=3):
     g, start = format_data(data)
     # get list of nodes to visit
     node2fr = {n: d["fr"] for n, d in g.nodes(data=True) if d["fr"] > 0}
@@ -112,41 +99,60 @@ def main1_deprecated1(data=None, n=3):
     paths = [(targets.copy(), path, 30, 0)]
     if node2fr.get(start, 0) > 0:
         paths.append((targets.copy(), path, 29, node2fr[start] * 29))
-    print(len(targets))
+    # print(len(targets))
     for i in range(len(targets)):
         newpaths = []
         for _targets, _path, _time, _tf in paths:
-            # [paths]
-            shortpaths = [nx.shortest_path(g, _path[-1], target) for target in _targets]
-            # [(total_val, path)]
-            valuepaths = list(
-                sorted(
-                    [(adj_time(_time, p) * node2fr[p[-1]], p) for p in shortpaths],
-                    reverse=True,
-                )
-            )
-            for _, p in valuepaths[: min(len(valuepaths), n)]:
-                _newtargets = [x for x in _targets if x != p[-1]]
-                _newpath = _path.copy() + [p[-1]]
-                _newtime = adj_time(_time, p)
-                _newtf = _tf + adj_time(_time, p) * node2fr[p[-1]]
-                if _newtf > 0:
-                    newpaths.append((_newtargets, _newpath, _newtime, _newtf))
+            valpaths = []
+            for _, b, d in g.edges(_path[-1], data=True):
+                if b not in _path:
+                    _newtargets = [x for x in _targets if x != b]
+                    _newtime = _time - d["weight"] - 1
+                    _newtf = _tf + g.nodes[b]["fr"] * _newtime
+                    _newpath = _path.copy() + [b]
+                    if _newtf > 0:
+                        newpaths.append((_newtargets, _newpath, _newtime, _newtf))
         newpaths = list(sorted(newpaths, key=lambda x: x[3], reverse=True))
         paths = newpaths[: min(len(newpaths), n**2)].copy()
-        print(i, len(paths), end="; ")
+        # print(i, len(paths), end='; ')
     _, chosen_path, _, answer = paths[0]
+    # print(answer)
     return answer
+
+
+def main1_beststep(data):
+    g, start = format_data(data)
+    time = 30
+    tf = 0
+    path = [start]
+    if g.nodes[start]["fr"] > 0:
+        time -= 1
+        tf += g.nodes[start]["fr"] * time
+    while set(path) != set(g.nodes):
+        stepvals = []
+        for _, b, d in g.edges(path[-1], data=True):
+            if b not in path:
+                _t = time - d["weight"] - 1
+                _tf = tf + g.nodes[b]["fr"] * _t
+                _path = path.copy() + [b]
+                stepvals.append((_tf, _t, _path))
+        tf, time, path = list(sorted(stepvals, reverse=True))[0]
+        print(tf, time, path)
+    print(tf)
+    return tf
 
 
 def main2(data=None):
     pass
 
 
-assert main1(TEST_DATA_A) == TEST_RESULT_A
-resa = main1(puz.input_data)
-print(f"solution: {resa}")
-puz.answer_a = resa
+assert main1_permuteall(TEST_DATA_A) == TEST_RESULT_A
+assert main1_dfs(TEST_DATA_A) == TEST_RESULT_A
+# assert main1_beststep(TEST_DATA_A) == TEST_RESULT_A  # doesn't work
+assert main1_sortedstep(TEST_DATA_A, 3) == TEST_RESULT_A
+# resa = main1_sortedstep(puz.input_data, 500)
+# print(f"solution: {resa}")
+# puz.answer_a = resa
 
 assert main2(TEST_DATA_B) == TEST_RESULT_B
 # resb = main2(puz.input_data)
