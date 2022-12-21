@@ -71,12 +71,12 @@ def main2(data=None):
     pass
 
 
-def test_main_1(seq="-1\n10\n0\n-8\n2\n5"):
+def test_main_1(seq="-1\n15\n0\n-8\n2\n5"):
     res = main1(seq)
-    assert res == 2
+    assert res == -9
 
 
-def test_main_2(seq="1\n3\n0\n-8\n-5"):
+def test_main_2(seq="1\n3\n0\n-8\n-15"):
     res = main1(seq)
     assert res == 0
 
