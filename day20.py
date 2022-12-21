@@ -33,27 +33,29 @@ def main1(data=None):
         newmod = newraw % n
         # if newraw >= n:
         #     newmod += 1
+        if newraw > n and newmod == curr - 1:
+            newmod += 1
         if newraw < 0:
             newmod -= 1
-        elif newmod == 0:
+        if newmod == 0:
             newmod = n - 1
         if val == 0:
             pass
         elif curr < newmod:
-            tomove = [k for k, v in vals.items()
-                      if v[1] in list(range(curr + 1, newmod + 1))]
+            tomove = [
+                k for k, v in vals.items() if v[1] in list(range(curr + 1, newmod + 1))
+            ]
             for j in tomove:
                 vals[j][1] -= 1
             vals[i][1] = newmod
         elif newmod < curr:
-            tomove = [k for k, v in vals.items()
-                      if v[1] in list(range(newmod, curr))]
+            tomove = [k for k, v in vals.items() if v[1] in list(range(newmod, curr))]
             for j in tomove:
                 vals[j][1] += 1
             vals[i][1] = newmod
         else:
-            ValueError('oops')
-        print(resort(vals))
+            ValueError("oops")
+        # print(resort(vals))
     final, _ = resort(vals)
     offset = np.argwhere(np.array(final) == 0)[0, 0]
     answer = (
@@ -69,10 +71,18 @@ def main2(data=None):
     pass
 
 
-def test_main1(seq="-1\n10\n0\n-8\n2\n5"):
-    main1(seq)
-    
-test_main1()
+def test_main_1(seq="-1\n10\n0\n-8\n2\n5"):
+    res = main1(seq)
+    assert res == 2
+
+
+def test_main_2(seq="1\n3\n0\n-8\n-5"):
+    res = main1(seq)
+    assert res == 0
+
+
+test_main_1()
+test_main_2()
 
 assert main1(TEST_DATA_A) == TEST_RESULT_A
 # resa = main1(puz.input_data)
