@@ -25,45 +25,41 @@ def resort(vals):
 
 
 def main1(data=None):
-    """need to rewrite this using modulo, 'cause deltas are > len(sequence)"""
     vals = format_data(data)
     n = len(vals)
     for i in tqdm(range(len(vals))):
         val, curr = vals[i]
-        new = curr + val
-        if val > 0 and new < n:
-            tomove = [
-                k for k, v in vals.items() if v[1] in list(range(curr + 1, new + 1))
-            ]
+        newraw = curr + val
+        newmod = newraw % n
+        # if newraw >= n:
+        #     newmod += 1
+        if newraw < 0:
+            newmod -= 1
+        elif newmod == 0:
+            newmod = n - 1
+        if val == 0:
+            pass
+        elif curr < newmod:
+            tomove = [k for k, v in vals.items()
+                      if v[1] in list(range(curr + 1, newmod + 1))]
             for j in tomove:
                 vals[j][1] -= 1
-            vals[i][1] = new
-        elif val > 0 and new >= n:
-            tomove = [
-                k for k, v in vals.items() if v[1] in list(range(new - n + 1, curr))
-            ]
+            vals[i][1] = newmod
+        elif newmod < curr:
+            tomove = [k for k, v in vals.items()
+                      if v[1] in list(range(newmod, curr))]
             for j in tomove:
                 vals[j][1] += 1
-            vals[i][1] = new - n + 1
-        elif val < 0 and new > 0:
-            tomove = [k for k, v in vals.items() if v[1] in list(range(new, curr))]
-            for j in tomove:
-                vals[j][1] += 1
-            vals[i][1] = new
-        elif val < 0 and new <= 0:
-            tomove = [k for k, v in vals.items() if v[1] in list(range(curr, n + new))]
-            for j in tomove:
-                vals[j][1] -= 1
-            vals[i][1] = n + new - 1
+            vals[i][1] = newmod
         else:
-            ValueError("oops")
-        # print(resort(vals))
+            ValueError('oops')
+        print(resort(vals))
     final, _ = resort(vals)
-    offset = np.argwhere(np.array(final) == 0)[0, 0] - 1
+    offset = np.argwhere(np.array(final) == 0)[0, 0]
     answer = (
-        final[(1000 - offset) % n]
-        + final[(2000 - offset) % n]
-        + final[(3000 - offset) % n]
+        final[(1000 + offset) % n]
+        + final[(2000 + offset) % n]
+        + final[(3000 + offset) % n]
     )
     print(answer)
     return answer
@@ -73,12 +69,17 @@ def main2(data=None):
     pass
 
 
-assert main1(TEST_DATA_A) == TEST_RESULT_A
-resa = main1(puz.input_data)
-print(f"solution: {resa}")
-puz.answer_a = resa
+def test_main1(seq="-1\n10\n0\n-8\n2\n5"):
+    main1(seq)
+    
+test_main1()
 
-assert main2(TEST_DATA_B) == TEST_RESULT_B
+assert main1(TEST_DATA_A) == TEST_RESULT_A
+# resa = main1(puz.input_data)
+# print(f"solution: {resa}")
+# puz.answer_a = resa
+
+# assert main2(TEST_DATA_B) == TEST_RESULT_B
 # resb = main2(puz.input_data)
 # print(f'solution: {resb}')
 # puz.answer_b = resb
