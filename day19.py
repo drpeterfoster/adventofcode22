@@ -93,7 +93,7 @@ def tree_search(inv, robs, i, orders, bestorders, stack, costs):
     newstates = []
     if i < 24:  # returns nothing, just adds states to stack
         i += 1
-        # if state can afford any robot, skip no op
+        # if state can afford all robots, skip no op
         if not all([can_build(robot, inv, costs) for robot in robs.keys()]):
             newstates += [(deepcopy(inv), deepcopy(robs), i, deepcopy(orders))]  # no op
         # get & execute all possible orders, add to stack
@@ -126,6 +126,11 @@ def main1_tree(data=None):
     bp_geodes = {}
     bp_bestorders = {}
     for bpi, costs in bps.items():
+        max_allowed = dict(
+            ore=max([v.get("ore", 0) for v in costs.values()]) * 2,
+            clay=max([v.get("clay", 0) for v in costs.values()]) * 2,
+            obs=max([v.get("obs", 0) for v in costs.values()]),
+        )
         bp_geodes[bpi] = 0
         bp_bestorders[bpi] = []
         inv = dict(ore=0, clay=0, obs=0, geo=0)
@@ -135,9 +140,17 @@ def main1_tree(data=None):
         counter = 0
         while len(stack) > 0:
             counter += 1
-            ix = -1 if counter % 10 != 0 else 0
+            ix = -1 if bp_geodes[bpi] == 0 else 0
+            qstate = stack.pop(ix)
+            if any(
+                [
+                    quant > max_allowed.get(resource, np.inf)
+                    for resource, quant in qstate[0].items()
+                ]
+            ):
+                continue
             _inv, _robs, _i, _orders = tree_search(
-                *stack.pop(ix), bp_bestorders[bpi], stack, costs
+                *qstate, bp_bestorders[bpi], stack, costs
             )
             if _inv.get("geo", 0) > bp_geodes[bpi]:
                 bp_geodes[bpi] = _inv["geo"]
