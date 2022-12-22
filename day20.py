@@ -33,32 +33,6 @@ def demixer(vals):
         if val == 0:
             pass
         elif curr < newmod:
-            tomove = [
-                k for k, v in vals.items() if v[1] in list(range(curr + 1, newmod + 1))
-            ]
-            for j in tomove:
-                vals[j][1] -= 1
-            vals[i][1] = newmod
-        elif newmod < curr:
-            tomove = [k for k, v in vals.items() if v[1] in list(range(newmod, curr))]
-            for j in tomove:
-                vals[j][1] += 1
-            vals[i][1] = newmod
-        else:
-            ValueError("oops")
-        # print(resort(vals))
-    return vals
-
-
-def demixer2(vals):
-    n = len(vals)
-    for i in tqdm(range(len(vals))):
-        val, curr = vals[i]
-        newraw = curr + val
-        newmod = newraw % (n - 1) if (newraw >= n or newraw < 0) else newraw % n
-        if val == 0:
-            pass
-        elif curr < newmod:
             modrange = list(range(curr + 1, newmod + 1))
             for k, v in vals.items():
                 if v[1] in modrange:
