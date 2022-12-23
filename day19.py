@@ -123,7 +123,11 @@ def next_states(state, costs):
                 update_inventory(newstate.inv, state.robs)
                 newstates += [newstate]
         # no op
-        if not all([can_build(robot, state.inv, costs) for robot in state.robs.keys()]):
+        max_ore = max([v.get("ore", 0) for v in costs.values()])
+        if (
+            not all([can_build(robot, state.inv, costs) for robot in state.robs.keys()])
+            and state.inv["ore"] < 2 * max_ore
+        ):
             newstate = deepcopy(state)
             newstate.t = i
             update_inventory(newstate.inv, state.robs)
@@ -172,8 +176,8 @@ def main1(data):
     bp_bestorders = {}
     for bpi, costs in tqdm(bps.items()):
         bp_geodes[bpi], bp_bestorders[bpi] = optimize_bp(costs)
+        print(bp_geodes, answer)
     answer = sum([np.product(x, dtype=int) for x in bp_geodes.items()])
-    print(bp_geodes, answer)
     return answer
 
 
