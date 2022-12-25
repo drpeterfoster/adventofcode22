@@ -157,16 +157,6 @@ def better_than_best(state, bestorders):
     return all(checks)
 
 
-# def better_than_best(state, bestorders):
-#     mygbots = [s for s, bot in state.orders if bot == "geo"]
-#     bestgbots = [s for s, bot in bestorders if bot == "geo" and s <= state.t]
-#     if len(mygbots) < len(bestgbots):
-#         return False
-#     if any([m > b for m, b in zip(mygbots, bestgbots)]):
-#         return False
-#     return True
-
-
 def next_states(state, costs):
     newstates = []
     if state.t < 24:
@@ -244,137 +234,19 @@ def main1(data):
     return answer
 
 
-# main1(TEST_DATA_A)
-# print(TEST_RESULT_A)
+main1(TEST_DATA_A)
+print(TEST_RESULT_A)
 
 # assert main1_tree(TEST_DATA_A) == TEST_RESULT_A
-resa = main1(puz.input_data)
-print(f"solution: {resa}")
-puz.answer_a = resa
+# resa = main1(puz.input_data)
+# print(f"solution: {resa}")
+# puz.answer_a = resa
 
 # assert main2(TEST_DATA_B) == TEST_RESULT_B
 # resb = main2(puz.input_data)
 # print(f'solution: {resb}')
 # puz.answer_b = resb
 # %%
-
-
-# def greedy_orders(robs, inv, costs):
-#     """Doesn't work... but simple enough to try first."""
-#     newrobs = {k: 0 for k in robs.keys()}
-#     for robot in "geo obs clay ore".split():
-#         if can_build(robot, inv, costs):
-#             newrobs[robot] += 1
-#             for resource, n in costs[robot].items():
-#                 inv[resource] -= n
-#     return newrobs, inv
-
-
-# def main1_greedy(data=None):
-#     bps = format_data(data)
-#     bp_geodes = {}
-#     for bpi, costs in bps.items():
-#         inv = dict(ore=0, clay=0, obs=0, geo=0)
-#         robs = dict(ore=1, clay=0, obs=0, geo=0)
-#         for i in range(1, 25):  # fixed time range
-#             newrobs, inv = greedy_orders(robs, inv, costs)
-#             inv = update_inventory(inv, robs)
-#             robs = update_robots(robs, newrobs)
-#         bp_geodes[bpi] = inv["geo"]
-#     answer = sum([np.product(x, dtype=int) for x in bp_geodes.items()])
-#     print(bp_geodes)
-#     print(answer)
-#     return answer
-
-
-# def plausible_orders(orders, bestorders):
-#     best = [i for i, b in bestorders if b == "clay"]
-#     first = [i for i, b in orders if b == "clay"]
-#     if len(best) > 0 and len(first) > 0 and first[0] > best[0]:
-#         return False
-#     best = [i for i, b in bestorders if b == "obs"]
-#     first = [i for i, b in orders if b == "obs"]
-#     if len(best) > 0 and len(first) > 0 and first[0] > best[0]:
-#         return False
-#     best = [i for i, b in bestorders if b == "geo"]
-#     first = [i for i, b in orders if b == "geo"]
-#     if len(best) > 0 and len(first) > 0 and first[0] > best[0]:
-#         return False
-#     return True
-
-
-# def tree_search(inv, robs, i, orders, bestorders, stack, costs):
-#     newstates = []
-#     if i < 24:  # returns nothing, just adds states to stack
-#         i += 1
-#         # if state can afford all robots, skip no op
-#         if not all([can_build(robot, inv, costs) for robot in robs.keys()]):
-#             newstates += [(deepcopy(inv), deepcopy(robs), i, deepcopy(orders))]  # no op
-#         # get & execute all possible orders, add to stack
-#         for robot in "geo obs clay ore".split():
-#             if can_build(robot, inv, costs):
-#                 newrobs, newinv, neworders = (
-#                     deepcopy(robs),
-#                     deepcopy(inv),
-#                     deepcopy(orders),
-#                 )
-#                 newrobs[robot] += 1
-#                 neworders += [(i, robot)]
-#                 for resource, n in costs[robot].items():
-#                     newinv[resource] -= n
-#                 newstates += [(newinv, newrobs, i, neworders)]  # executed
-#         # update inventories (based on input state)
-#         for _inv, _, _, _ in newstates:
-#             update_inventory(_inv, robs)
-#         stack += [
-#             state for state in newstates if plausible_orders(state[-1], bestorders)
-#         ]
-#         return ({}, {}, 0, [])
-#     else:  # when game is over, returns gamestate
-#         return (inv, robs, i, orders)
-
-
-# def main1_tree(data=None):
-#     """blegh. i think i need to be smarter about adding to the stack vs filtering crappy things out"""
-#     bps = format_data(data)
-#     bp_geodes = {}
-#     bp_bestorders = {}
-#     for bpi, costs in bps.items():
-#         max_allowed = dict(
-#             ore=max([v.get("ore", 0) for v in costs.values()]) * 2,
-#             clay=max([v.get("clay", 0) for v in costs.values()]) * 2,
-#             obs=max([v.get("obs", 0) for v in costs.values()]),
-#         )
-#         bp_geodes[bpi] = 0
-#         bp_bestorders[bpi] = []
-#         inv = dict(ore=0, clay=0, obs=0, geo=0)
-#         robs = dict(ore=1, clay=0, obs=0, geo=0)
-#         stack = [(inv, robs, 0, [])]
-#         counter = 0
-#         while len(stack) > 0:
-#             counter += 1
-#             ix = -1 if bp_geodes[bpi] == 0 else 0
-#             qstate = stack.pop(ix)
-#             if any(
-#                 [
-#                     quant > max_allowed.get(resource, np.inf)
-#                     for resource, quant in qstate[0].items()
-#                 ]
-#             ):
-#                 continue
-#             _inv, _robs, _i, _orders = tree_search(
-#                 *qstate, bp_bestorders[bpi], stack, costs
-#             )
-#             if _inv.get("geo", 0) > bp_geodes[bpi]:
-#                 bp_geodes[bpi] = _inv["geo"]
-#                 bp_bestorders[bpi] = deepcopy(_orders)
-#             if counter % 1000 == 0:
-#                 print(counter, len(stack), bp_geodes[bpi], bp_bestorders[bpi])
-#     answer = sum([np.product(x, dtype=int) for x in bp_geodes.items()])
-#     print(bp_geodes)
-#     print(answer)
-#     return answer
-
 
 # def main2(data=None):
 #     pass
