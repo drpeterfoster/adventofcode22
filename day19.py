@@ -57,11 +57,11 @@ class State:
     orders: list
 
 
-def rank_state(state, costs, i):
+def rank_state(state, costs, i=0):
     # cla max(ceil(crobs.o / orobs))
-    t_cla = np.ceil((costs["clay"]["ore"] - state.inv["ore"]) / state.robs["ore"])
+    t_cla = np.ceil((costs["clay"]["ore"] - state.inv["ore"]) / state.robs["ore"]) + 1
     # obs max(ceil(obrobs.c / crobs), ceil(grobs.o / orobs))
-    t_obs = 0
+    t_obs = 1
     if state.robs["clay"] == 0:
         t_obs += t_cla
     t_obs += max(
@@ -73,7 +73,7 @@ def rank_state(state, costs, i):
         ]
     )
     # geo max(ceil(grobs.obs / obrobs ), ceil(grobs.o / orobs))
-    t_geo = 0
+    t_geo = 1
     if state.robs["obs"] == 0:
         t_geo += t_obs
     t_geo += max(
@@ -84,9 +84,59 @@ def rank_state(state, costs, i):
             np.ceil((costs["geo"]["ore"] - state.inv["ore"]) / state.robs["ore"]),
         ]
     )
-    return -state.t, int(t_geo), i, state
+    t_geo += 1  # index offset
+    return int(t_geo), int(t_geo + state.t), i, state
 
 
+"""
+Blueprint 1:
+  Each ore robot costs 4 ore.
+  Each clay robot costs 2 ore.
+  Each obsidian robot costs 3 ore and 14 clay.
+  Each geode robot costs 2 ore and 7 obsidian.
+  
+      01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 
+
+2 ore 06 08 10 12 14 16 18 20 22
+3 cla 03 06 09 12 15 18 21
+1 obs 01 02 03 04 05 06 07 01                    
+1 geo                         01                                                       01 02                                
+"""
+
+STATE1 = State(
+    dict(ore=0, clay=0, obs=0, geo=0), dict(ore=1, clay=0, obs=0, geo=0), 0, []
+)  # 27
+STATE2 = State(
+    dict(ore=0, clay=0, obs=0, geo=0), dict(ore=1, clay=0, obs=0, geo=0), 1, []
+)  # 27
+STATE3 = State(
+    dict(ore=0, clay=0, obs=0, geo=0), dict(ore=1, clay=1, obs=0, geo=0), 3, []
+)  # 24
+STATE4 = State(
+    dict(ore=0, clay=0, obs=0, geo=0), dict(ore=1, clay=1, obs=1, geo=0), 0, []
+)  # 9
+STATE5 = State(
+    dict(ore=0, clay=0, obs=0, geo=1), dict(ore=1, clay=0, obs=0, geo=0), 0, []
+)  # 27
+STATE6 = State(
+    dict(ore=2, clay=0, obs=0, geo=0), dict(ore=2, clay=3, obs=1, geo=0), 0, []
+)  # 9
+
+
+def test_rank_state(state):
+    costs_dict = format_data(TEST_DATA_A)
+    rank = rank_state(state, costs_dict[1], 0)
+    print(rank[:-1])
+
+
+# test_rank_state(STATE1)
+# test_rank_state(STATE2)
+# test_rank_state(STATE3)
+# test_rank_state(STATE4)
+# test_rank_state(STATE5)
+# test_rank_state(STATE6)
+
+# %%
 def better_than_best(state, bestorders):
     bests = {bot: i for i, bot in bestorders[::-1]}
     firsts = {bot: i for i, bot in state.orders[::-1]}
@@ -107,6 +157,16 @@ def better_than_best(state, bestorders):
     return all(checks)
 
 
+# def better_than_best(state, bestorders):
+#     mygbots = [s for s, bot in state.orders if bot == "geo"]
+#     bestgbots = [s for s, bot in bestorders if bot == "geo" and s <= state.t]
+#     if len(mygbots) < len(bestgbots):
+#         return False
+#     if any([m > b for m, b in zip(mygbots, bestgbots)]):
+#         return False
+#     return True
+
+
 def next_states(state, costs):
     newstates = []
     if state.t < 24:
@@ -124,9 +184,11 @@ def next_states(state, costs):
                 newstates += [newstate]
         # no op
         max_ore = max([v.get("ore", 0) for v in costs.values()])
+        max_clay = max([v.get("clay", 0) for v in costs.values()])
         if (
             not all([can_build(robot, state.inv, costs) for robot in state.robs.keys()])
             and state.inv["ore"] < 2 * max_ore
+            and state.inv["clay"] < 2 * max_clay
         ):
             newstate = deepcopy(state)
             newstate.t = i
@@ -154,8 +216,8 @@ def optimize_bp(costs):
     stack.put(init_state)
     i = 0
     while not stack.empty():
-        qstate = stack.get()
-        state = qstate[-1]
+        rstate = stack.get()
+        state = rstate[-1]
         if not better_than_best(state, bestorders):
             continue
         newstates = next_states(state, costs)
@@ -164,7 +226,7 @@ def optimize_bp(costs):
                 most_geos = state.inv["geo"]
                 bestorders = deepcopy(state.orders)
             else:
-                i -= 1
+                i += 1
                 rstate = rank_state(state, costs, i)
                 stack.put(rstate)
     return most_geos, bestorders
@@ -176,56 +238,19 @@ def main1(data):
     bp_bestorders = {}
     for bpi, costs in tqdm(bps.items()):
         bp_geodes[bpi], bp_bestorders[bpi] = optimize_bp(costs)
-        print(bp_geodes, answer)
+        print(bpi, bp_geodes[bpi])
     answer = sum([np.product(x, dtype=int) for x in bp_geodes.items()])
+    print(answer)
     return answer
 
 
-main1(TEST_DATA_A)
-print(TEST_RESULT_A)
-
-"""
-Blueprint 1:
-  Each ore robot costs 4 ore.
-  Each clay robot costs 2 ore.
-  Each obsidian robot costs 3 ore and 14 clay.
-  Each geode robot costs 2 ore and 7 obsidian.
-  
-  2o
-  3o 14c
-  2o 7s
-  
-  7o 14c
-  
-      01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24
-  
-  ore 01 02 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 13 14 15 16 17 18 19 20 19 20 21 22 23 24
-  cla          01 02 03 04 05 06 07 08 09 10 11 12 13 14 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24
-  obs                                                       01 02 03 04 05 06 07 01 02 03 04 05 06 07 08
-  geo                                                                               01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24
-  
-  
-  
-  t_ore = 7/1
-  t_cla = 14/1
-  t_obs = 7/1
-  priority = max(^) = 
-  
-  cost(geo) - inv(now)
-    time to ^ with current robots
-  
-
-Blueprint 2:
-  Each ore robot costs 2 ore.
-  Each clay robot costs 3 ore.
-  Each obsidian robot costs 3 ore and 8 clay.
-  Each geode robot costs 3 ore and 12 obsidian.
-"""
+# main1(TEST_DATA_A)
+# print(TEST_RESULT_A)
 
 # assert main1_tree(TEST_DATA_A) == TEST_RESULT_A
-# resa = main1(puz.input_data)
-# print(f'solution: {resa}')
-# puz.answer_a = resa
+resa = main1(puz.input_data)
+print(f"solution: {resa}")
+puz.answer_a = resa
 
 # assert main2(TEST_DATA_B) == TEST_RESULT_B
 # resb = main2(puz.input_data)
