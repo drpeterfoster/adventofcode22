@@ -3,7 +3,6 @@ import numpy as np
 import pandas as pd
 from aocd.models import Puzzle
 from queue import PriorityQueue
-from collections import defaultdict
 
 puz = Puzzle(year=2022, day=24)
 print(puz.url)
@@ -13,7 +12,10 @@ print(puz.url)
 TEST_DATA_A = "#.######\n#>>.<^<#\n#.<..<<#\n#>v.><>#\n#<^v^^>#\n######.#"
 TEST_RESULT_A = 18
 TEST_DATA_B = None
-TEST_RESULT_B = None
+TEST_RESULT_B = 54
+
+
+BOARDSTATES = {}
 
 
 def format_data(data):
@@ -28,88 +30,116 @@ def format_data(data):
         ],
         axis=2,
     )
-    return mat[1:-1, 1:-1, :]
-
-
-def roll_board(board):
-    board[:, :, 0] = np.roll(board[:, :, 0], 1, axis=1)
-    board[:, :, 1] = np.roll(board[:, :, 1], -1, axis=1)
-    board[:, :, 2] = np.roll(board[:, :, 2], 1, axis=0)
-    board[:, :, 3] = np.roll(board[:, :, 3], -1, axis=0)
+    board = np.ones(mat.shape)
+    board[0, 1, :] = [0] * 4  # add start
+    board[-1, -2, :] = [0] * 4  # add end
+    board[1:-1, 1:-1, :] = mat[1:-1, 1:-1, :]
+    BOARDSTATES[0] = board.copy()
     return board
 
 
-def dist(a, board):
-    b = np.array(board.shape[:-1]) - 1
+def print_board(turn, pos):
+    flat = BOARDSTATES[turn].sum(axis=2).astype(str)
+    flat[pos[0], pos[1]] = "X"
+    string = "\n".join(["".join(line) for line in flat]).replace("0", " ")
+    print(string)
+
+
+def roll_board(turn):
+    if turn in BOARDSTATES:
+        return BOARDSTATES[turn]
+    else:
+        board = BOARDSTATES[turn - 1].copy()
+        board[1:-1, 1:-1, 0] = np.roll(board[1:-1, 1:-1, 0], 1, axis=1)
+        board[1:-1, 1:-1, 1] = np.roll(board[1:-1, 1:-1, 1], -1, axis=1)
+        board[1:-1, 1:-1, 2] = np.roll(board[1:-1, 1:-1, 2], 1, axis=0)
+        board[1:-1, 1:-1, 3] = np.roll(board[1:-1, 1:-1, 3], -1, axis=0)
+        BOARDSTATES[turn] = board
+        return board
+
+
+def dist(a, b):
     return int(np.abs(a - b).sum())
 
 
-def move_maker(pos, board, round, permid):
-    board = roll_board(board)
-    round += 1
-    permid = (permid + 1) % np.product(board.shape[:-1])
-    flat = board.sum(axis=2)
+def move_maker(pos, turn):
+    turn += 1
+    flat = roll_board(turn).sum(axis=2)
     newpos = []
-    if tuple(pos) == (-1, -1):
-        if flat[0, 0] == 0:
-            newpos += [np.array([0, 0])]
-        newpos += [np.zeros(2) - 1]
-    else:
-        rng = np.random.default_rng(round)
-        for mod in rng.choice([[0, -1], [-1, 0], [1, 0], [0, 1], [0, 0]], 5, False):
-            try:
-                opt = pos + mod
-                if not np.all(opt >= 0):
-                    raise IndexError
-                if flat[opt[0], opt[1]] == 0:
-                    newpos.append(opt)
-            except IndexError:
-                continue
+    for mod in np.array([[0, -1], [-1, 0], [0, 0], [1, 0], [0, 1]]):
+        try:
+            opt = pos + mod
+            if not np.all(opt >= 0):
+                raise IndexError
+            if flat[opt[0], opt[1]] == 0:
+                newpos.append(opt)
+        except IndexError:
+            continue
     newstates = [
-        (pos.copy() if isinstance(pos, np.ndarray) else pos, board.copy(), round)
-        for pos in newpos
+        (pos.copy() if isinstance(pos, np.ndarray) else pos, turn) for pos in newpos
     ]
-    return newstates, permid
+    return newstates
+
+
+def _solver(start, end, start_turn=0):
+    visted = set()
+    besttime = np.inf
+    counter = 0
+    stack = PriorityQueue()
+    # distance, counter, position, turn
+    stack.put((dist(start, end), counter, start, start_turn))
+    while not stack.empty():
+        dis, _, pos, turn = stack.get()
+        if tuple([*pos, turn]) in visted:  # been there at that time? skip it.
+            stack.task_done()
+            continue
+        visted.update([tuple([*pos, turn])])
+        if (turn + dis) >= besttime:  # too far away to get besttime? skip it.
+            stack.task_done()
+            continue
+        if np.all(pos == end) and turn < besttime:  # you the best time? record it.
+            besttime = turn
+            stack.task_done()
+            continue
+        newstates = move_maker(pos, turn)  # for everything else, step forward
+        stack.task_done()
+        for state in newstates:
+            counter -= 1
+            stack.put((dist(state[0], end), counter, *state))
+    print(besttime)
+    return besttime
 
 
 def main1(data=None):
     board = format_data(data)
-    nperms = np.product(board.shape[:-1])
-    end = np.array([board.shape[0] - 1, board.shape[1] - 1])
-    besttime = np.inf
-    counter = 0
-    stack = PriorityQueue()
-    stack.put((sum(board.shape[:-1]) + 1, counter, np.zeros(2) - 1, board.copy(), 0, 0))
-    looptracker = defaultdict(set)
-    while not stack.empty():
-        dis, _, pos, board, round, permid = stack.get()
-        if (round + dis) >= besttime:
-            continue
-        if np.all(pos == end) and round < besttime:
-            besttime = round
-            continue
-        newstates, permid = move_maker(pos, board, round, permid)
-        for state in newstates:
-            counter += 1
-            looptracker[tuple(pos)].update([permid])
-            if len(looptracker[tuple(pos)]) <= nperms:
-                stack.put((dist(state[0], board), counter, *state, permid))
-    answer = besttime + 1
+    start = np.array([0, 1])
+    end = np.array([board.shape[0] - 1, board.shape[1] - 2])
+    answer = _solver(start, end)
     print(answer)
     return answer
 
 
 def main2(data=None):
-    pass
+    board = format_data(data)
+    start = np.array([0, 1])
+    end = np.array([board.shape[0] - 1, board.shape[1] - 2])
+    routes = [(start, end), (end, start), (start, end)]
+    answers = []
+    besttime = 0
+    for start_, end_ in routes:
+        besttime = _solver(start_, end_, besttime)
+        answers.append(besttime)
+    print(answers)
+    return answers[-1]
 
 
-# assert main1(TEST_DATA_A) == TEST_RESULT_A
-resa = main1(puz.input_data)
-print(f"solution: {resa}")
-puz.answer_a = resa
+assert main1(TEST_DATA_A) == TEST_RESULT_A
+# resa = main1(puz.input_data)
+# print(f"solution: {resa}")
+# puz.answer_a = resa
 
-assert main2(TEST_DATA_B) == TEST_RESULT_B
-# resb = main2(puz.input_data)
-# print(f'solution: {resb}')
-# puz.answer_b = resb
+assert main2(TEST_DATA_A) == TEST_RESULT_B
+resb = main2(puz.input_data)
+print(f"solution: {resb}")
+puz.answer_b = resb
 # %%
