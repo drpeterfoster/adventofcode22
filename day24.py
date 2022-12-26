@@ -133,12 +133,12 @@ def main2(data=None):
     return answers[-1]
 
 
-assert main1(TEST_DATA_A) == TEST_RESULT_A
+# assert main1(TEST_DATA_A) == TEST_RESULT_A
 # resa = main1(puz.input_data)
 # print(f"solution: {resa}")
 # puz.answer_a = resa
 
-assert main2(TEST_DATA_A) == TEST_RESULT_B
+# assert main2(TEST_DATA_A) == TEST_RESULT_B
 resb = main2(puz.input_data)
 print(f"solution: {resb}")
 puz.answer_b = resb
