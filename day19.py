@@ -5,7 +5,7 @@ from aocd.models import Puzzle
 import re
 from copy import deepcopy
 from queue import PriorityQueue
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from tqdm import tqdm
 
 
@@ -55,6 +55,7 @@ class State:
     robs: dict
     t: int
     orders: list
+    tgeo: dict = field(default_factory=dict)
 
 
 def rank_state(state, costs, i=0):
@@ -85,6 +86,7 @@ def rank_state(state, costs, i=0):
         ]
     )
     t_geo += 1  # index offset
+    state.tgeo[state.t] = state.robs["geo"], int(t_geo)
     return int(t_geo), int(t_geo + state.t), i, state
 
 
@@ -157,6 +159,17 @@ def better_than_best(state, bestorders):
     return all(checks)
 
 
+# def better_than_best(state, best_tgeos):
+#     na = (0, np.inf)
+#     return all(
+#         [
+#             tgeo[0] >= best_tgeos.get(turn, na)[0]
+#             and tgeo[1] <= best_tgeos.get(turn, na)[1]+1
+#             for turn, tgeo in state.tgeo.items()
+#         ]
+#     )
+
+
 def next_states(state, costs):
     newstates = []
     if state.t < 24:
@@ -191,6 +204,7 @@ def next_states(state, costs):
 
 def optimize_bp(costs):
     bestorders = []
+    best_tgeos = {}
     most_geos = 0
     init_state = rank_state(
         State(
@@ -210,14 +224,17 @@ def optimize_bp(costs):
         state = rstate[-1]
         if not better_than_best(state, bestorders):
             continue
+        # if not better_than_best(state, best_tgeos):
+        #     continue
         newstates = next_states(state, costs)
         for state in newstates:
+            i += 1
+            rstate = rank_state(state, costs, i)
             if state.t == 24 and state.inv["geo"] > most_geos:
                 most_geos = state.inv["geo"]
                 bestorders = deepcopy(state.orders)
+                best_tgeos = deepcopy(state.tgeo)
             else:
-                i += 1
-                rstate = rank_state(state, costs, i)
                 stack.put(rstate)
     return most_geos, bestorders
 

@@ -15,7 +15,7 @@ TEST_DATA_A = "Valve AA has flow rate=0; tunnels lead to valves DD, II, BB\nValv
 # D B J H E C
 TEST_RESULT_A = 1651
 TEST_DATA_B = None
-TEST_RESULT_B = None
+TEST_RESULT_B = 1707
 
 
 def format_data(data):
@@ -42,17 +42,26 @@ def format_data(data):
     return g, start
 
 
+#%%
 def dfexplore(g, start, path, bestpath):
     if start not in path:
         path.append(start)
-    neighbors = [n for n in g.neighbors(start) if n not in path]
-    while len(neighbors) > 0:
-        n = neighbors.pop()
-        path, bestpath = dfexplore(g, n, path, bestpath)
-    score = score_path(g, path)
-    if score > bestpath[0]:
-        bestpath = (score, path)
+        neighbors = [n for n in g.neighbors(start) if n not in path]
+        if not len(neighbors):
+            score = score_path(g, path)
+            if score > bestpath[0]:
+                bestpath = (score, path)
+        # check if worth continuing
+        # return path[:-1], bestpath
+        while len(neighbors) > 0:
+            n = neighbors.pop()
+            path, bestpath = dfexplore(g, n, path, bestpath)
     return path[:-1], bestpath
+
+
+# def time2bail(g, path, neighbors, bestpath):
+#     # min value of all edge weights * len(neighbors)
+#     curr_score = score_path(g, path)
 
 
 def score_path(g, path):
@@ -84,7 +93,7 @@ def main1_permuteall(data):
 def main1_dfs(data):
     g, start = format_data(TEST_DATA_A)
     bestpath = (0, [])
-    _, bestpath = dfexplore(g, start, [start], bestpath)
+    _, bestpath = dfexplore(g, start, [], bestpath)
     return bestpath[0]
 
 
@@ -151,11 +160,12 @@ assert main1_dfs(TEST_DATA_A) == TEST_RESULT_A
 # assert main1_beststep(TEST_DATA_A) == TEST_RESULT_A  # doesn't work
 assert main1_sortedstep(TEST_DATA_A, 3) == TEST_RESULT_A
 # resa = main1_sortedstep(puz.input_data, 500)
-# print(f"solution: {resa}")
-# puz.answer_a = resa
+resa = main1_dfs(puz.input_data)
+print(f"solution: {resa}")
+puz.answer_a = resa
 
-assert main2(TEST_DATA_B) == TEST_RESULT_B
-# resb = main2(puz.input_data)
+assert main1_dfs(TEST_DATA_A, 2) == TEST_RESULT_B
+# resb = main2_dfs(puz.input_data)
 # print(f'solution: {resb}')
 # puz.answer_b = resb
 # %%
