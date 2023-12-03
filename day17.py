@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 from aocd.models import Puzzle
 from itertools import cycle
+from tqdm import tqdm
 
 puz = Puzzle(year=2022, day=17)
 print(puz.url)
@@ -21,7 +22,6 @@ ROCK2 = np.array([[0, 1, 0], [1, 1, 1], [0, 1, 0]], dtype=int)
 ROCK3 = np.array([[0, 0, 1], [0, 0, 1], [1, 1, 1]], dtype=int)
 ROCK4 = np.array([[1], [1], [1], [1]], dtype=int)
 ROCK5 = np.array([[1, 1], [1, 1]], dtype=int)
-ROCKS = cycle([ROCK1, ROCK2, ROCK3, ROCK4, ROCK5])
 EMPTYROW = [1, 0, 0, 0, 0, 0, 0, 0, 1]
 
 
@@ -62,10 +62,11 @@ def rockmover(board, rock, ri, rj, jet):
 
 def main1(data=None, nrocks=2022):
     jets = cycle(list(data))
+    rocks = cycle([ROCK1, ROCK2, ROCK3, ROCK4, ROCK5])
     towerheight = 0
     board = np.ones((1, 9), dtype=int)
-    for _ in range(nrocks):
-        rock = next(ROCKS)
+    for _ in tqdm(range(nrocks)):
+        rock = next(rocks)
         topindex = np.argwhere(board.sum(axis=1) - 2)[0, 0]
         board = np.vstack(
             [
@@ -92,16 +93,77 @@ def main1(data=None, nrocks=2022):
     return towerheight
 
 
-def main2(data=None):
-    pass
+def highest_point(board):
+    return board.shape[0] - np.argwhere(board.sum(axis=1) - 2)[0, 0] - 1
 
 
-assert main1(TEST_DATA_A) == TEST_RESULT_A
-resa = main1(puz.input_data)
-print(f"solution: {resa}")
-puz.answer_a = resa
+def main2(data=None, nrocks=2022):
+    jets = cycle(list(enumerate(data)))
+    rocks = cycle([(0, ROCK1), (1, ROCK2), (2, ROCK3), (3, ROCK4), (4, ROCK5)])
+    towerheight = 0
+    board = np.ones((1, 9), dtype=int)
 
-# assert main2(TEST_DATA_A, 1_000_000_000_000) == TEST_RESULT_B
+    baserocks = 500
+    baseheight = 0
+    repeatrocks = len(data) * 5
+    nrepeats = (nrocks - 500) // repeatrocks
+    nrocks_mod = ((nrocks - 500) % repeatrocks) + 500 + repeatrocks
+
+    rockjettracker = {}
+
+    for i in tqdm(range(nrocks_mod)):
+        irock, rock = next(rocks)
+        topindex = np.argwhere(board.sum(axis=1) - 2)[0, 0]
+        board = np.vstack(
+            [
+                np.array([EMPTYROW for _ in range(rock.shape[0] + 3)]),
+                board[topindex:, :],
+            ]
+        )
+        ri, rj = np.array((0, rock.shape[0])), np.array((3, 3 + rock.shape[1]))
+        board[ri[0] : ri[1], rj[0] : rj[1]] += rock
+        landed = False
+        while not landed:
+            ijet, jet = next(jets)
+            board, ri, rj, landed = rockmover(board, rock, ri, rj, jet)
+            rockjetpair = (irock, ijet)
+            if landed:
+                if rockjetpair not in rockjettracker:
+                    rockjettracker[rockjetpair] = highest_point(board)
+                else:
+                    
+
+        
+        
+        # part 2 ish
+        if i + 1 == baserocks:
+            baseheight = board.shape[0] - np.argwhere(board.sum(axis=1) - 2)[0, 0]
+            pass
+        if i + 1 == baserocks + repeatrocks:
+            repeatheight = (
+                board.shape[0] - np.argwhere(board.sum(axis=1) - 2)[0, 0] - baseheight
+            )
+            pass
+    towerheight = board.shape[0] - np.argwhere(board.sum(axis=1) - 2)[0, 0] - 1
+    towerheight += repeatheight * nrepeats
+    print(towerheight)
+    return towerheight
+
+
+# assert main1(TEST_DATA_A) == TEST_RESULT_A
+# resa = main1(puz.input_data, 10000)
+# print(f"solution: {resa}")
+# puz.answer_a = resa
+
+
+def test_main2():
+    res = main2(TEST_DATA_A, 1_000_000_000_000)
+    print("test result:", res)
+    print("real result:", TEST_RESULT_B)
+    assert res == TEST_RESULT_B
+
+
+test_main2()
 # resb = main2(puz.input_data, 1_000_000_000_000)
 # print(f'solution: {resb}')
 # puz.answer_b = resb
